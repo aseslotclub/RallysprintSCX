@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Timing - RallySprint ASE 2026</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        :root {
+            --rally-red: #dc2626;
+            --rally-red-comp: #e11d48;
+            --rally-orange: #f97316;
+            --rally-gold: #fbbf24;
+            --rally-dark: #020617;
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-800: #1e293b;
+            --border-heavy: 2px solid #000;
+            --success: #059669;
+            --danger: #dc2626;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #cbd5e1;
+            margin: 0;
+            color: var(--slate-800);
+        }
+
+        .no-print { display: block; }
+
+        .admin-toolbar {
+            background: var(--rally-dark);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid var(--rally-red-comp);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            gap: 15px;
+        }
+
+        .registration-form {
+            display: flex;
+            gap: 8px;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .registration-form input {
+            padding: 5px;
+            border-radius: 4px;
+            border: none;
+            font-size: 11px;
+        }
+
+        #printable-report {
+            background: white;
+            width: 1120px; 
+            margin: 20px auto;
+            min-height: 297mm;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .report-padding { padding: 40px; }
+
+        .checker-pattern {
+            background-image: 
+                linear-gradient(45deg, #000 25%, transparent 25%), 
+                linear-gradient(-45deg, #000 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #000 75%), 
+                linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-size: 20px 20px;
+            height: 15px;
+            width: 100%;
+        }
+
+        .header-brand {
+            background: var(--rally-dark); color: white; padding: 2rem 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand-title h1 { margin: 0; font-size: 2.8rem; font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: -2px; line-height: 1; }
+        
+        .calendar-strip { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin: 20px 0; }
+        .cal-item { text-align: center; padding: 8px; border: 1px solid var(--slate-200); border-radius: 6px; font-size: 10px; background: var(--slate-50); cursor: pointer; }
+        .cal-item:hover { border-color: var(--rally-red-comp); }
+        .cal-done { border: 2px solid var(--rally-red-comp); background: #fff1f2; font-weight: bold; color: var(--rally-red-comp); }
+        .cal-active { background: var(--rally-dark); color: white; border: 2px solid var(--rally-gold); }
+
+        .ranking-card {
+            background: white;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            padding: 0;
+            overflow: hidden;
+            break-inside: avoid;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-header-v2 {
+            padding: 12px 20px;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--slate-800);
+            color: white;
+        }
+
+        .card-header-v2.gold { background: linear-gradient(90deg, #b45309, var(--rally-gold)); color: black; }
+        .card-header-v2.red { background: linear-gradient(90deg, #991b1b, var(--rally-red-comp)); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: var(--slate-100); padding: 10px 5px; border-bottom: 2px solid #000; font-weight: 800; text-transform: uppercase; }
+        td { padding: 8px 5px; border-bottom: 1px solid #eee; text-align: center; }
+
+        .row-alt:nth-child(even) { background-color: var(--slate-50); }
+
+        .col-driver { text-align: left; padding-left: 20px; font-weight: 600; width: 220px; }
+        .pts-total { font-size: 14px; font-weight: 900; color: var(--rally-red-comp); background: #fff1f2 !important; width: 60px; }
+        
+        .car-badge {
+            display: inline-block;
+            background: var(--slate-800);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 800;
+            color: white;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .diff-tag { font-size: 9px; font-weight: bold; color: #64748b; }
+        .diff-tag.gap { color: var(--rally-red-comp); }
+
+        .btn { padding: 0.6rem 1rem; border-radius: 6px; font-weight: 800; cursor: pointer; border: none; text-transform: uppercase; font-size: 11px; transition: 0.2s; }
+        .btn-red { background: var(--rally-red-comp); color: white; box-shadow: 0 4px 0 #991b1b; }
+        .btn-red:active { transform: translateY(2px); box-shadow: 0 2px 0 #991b1b; }
+        .btn-outline { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; }
+
+        .footer-info {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 40px; margin-top: 50px;
+            padding: 30px; background: var(--slate-50); border-radius: 12px; font-size: 11px; border: 1px solid #e2e8f0;
+        }
+
+        #editModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(4px); }
+
+        .car-label { font-size: 8px; color: #64748b; font-weight: normal; display: block; margin-top: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 60px; }
+
+        @media print {
+            body { background: white; }
+            #printable-report { width: 100% !important; margin: 0 !important; box-shadow: none !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-toolbar no-print">
+        <div style="display:flex; align-items:center; gap:12px">
+            <span style="font-weight:900; font-size:18px; font-style: italic;">ASE SLOT <span style="color:var(--rally-red-comp)">COPA 2026</span></span>
+            <div class="registration-form">
+                <input type="text" id="newDriverName" placeholder="NOMBRE PILOTO">
+                <input type="text" id="newDriverTeam" placeholder="ESCUDERÍA" value="ASE SLOT">
+                <button onclick="addDriver()" class="btn btn-red">REGISTRAR</button>
+            </div>
+            <button onclick="document.getElementById('jsonInput').click()" class="btn btn-outline">📂 CARGAR</button>
+            <button onclick="exportJSON()" class="btn btn-outline">💾 BACKUP</button>
+            <input type="file" id="jsonInput" style="display:none" onchange="importJSON(event)">
+        </div>
+        <button onclick="generatePDF()" class="btn btn-red" style="background:#059669; box-shadow: 0 4px 0 #065f46;">📄 GENERAR REPORTE PDF OFICIAL</button>
+    </div>
+
+    <div id="printable-report">
+        <div class="checker-pattern"></div>
+        <header class="header-brand">
+            <div class="brand-title">
+                <h1>RALLYSPRINT 2026</h1>
+                <span style="color:var(--rally-gold); font-weight:900; letter-spacing: 2px; font-size: 16px;">CAMPEONATO DE SLOT CLÁSICOS & WRC</span>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight: 900; font-size: 20px;">ASE SLOT CLUB</div>
+                <div id="currentDate" style="opacity: 0.8; font-size: 12px;"></div>
+            </div>
+        </header>
+
+        <div class="report-padding">
+            <div class="calendar-strip" id="calendarDisplay"></div>
+            
+            <div id="live-container" style="margin-bottom: 40px;"></div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                <div id="rank-scratch" class="ranking-card"></div>
+                <div id="stats-summary" class="ranking-card" style="border-color: var(--slate-800);">
+                    <div class="card-header-v2" style="background: var(--slate-800);">
+                        <span>📊 RESUMEN DE COMPETICIÓN</span>
+                        <span id="totalEntriesCount"></span>
+                    </div>
+                    <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div id="best-wrc-car" style="background:var(--slate-50); padding: 10px; border-radius: 8px; border-left: 4px solid #2563eb;"></div>
+                        <div id="best-classic-car" style="background:var(--slate-50); padding: 10px; border-radius: 8px; border-left: 4px solid var(--rally-red-comp);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                <div id="rank-wrc" class="ranking-card"></div>
+                <div id="rank-clasicos" class="ranking-card"></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                <div id="stats-cars-wrc" class="ranking-card"></div>
+                <div id="stats-cars-clasicos" class="ranking-card"></div>
+            </div>
+
+            <div id="dashboard" style="display: flex; flex-direction: column; gap: 30px;"></div>
+            
+            <footer class="footer-info">
+                <div>
+                    <b style="font-size: 13px; color: var(--rally-red-comp)">REGLAMENTO DE PUNTUACIÓN</b><br><br>
+                    Se contabilizan los 5 mejores resultados de las 8 pruebas programadas. En caso de empate, prevalece el mayor número de primeros puestos, luego segundos y así sucesivamente.
+                </div>
+                <div style="text-align: center; border-left: 1px solid #ccc; border-right: 1px solid #ccc;">
+                    <b style="font-size: 13px;">CONTROL DE TIEMPOS</b><br><br>
+                    Sistema de cronometraje digital de alta precisión. <br>
+                    <b>Puntuación oficial:</b><br>
+                    1º: 20pts | 2º: 16pts | 3º: 13pts | 4º: 10pts | 5º: 8pts
+                </div>
+                <div style="text-align: right;">
+                    <b style="font-size: 13px;">ORGANIZACIÓN</b><br><br>
+                    ASE SLOT CLUB - Comité de Competición<br>
+                    Reporte generado automáticamente por LiveTiming<br>
+                    <i>Versión 7.2 - Enero 2026</i>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <div id="editModal" class="no-print">
+        <div style="background:white; width:90%; max-width:900px; border-radius:12px; overflow:hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <div style="background:var(--rally-dark); color:white; padding:1.5rem; display:flex; justify-content:space-between; align-items: center;">
+                <div>
+                    <h2 id="modalTitle" style="margin:0; font-style: italic;"></h2>
+                    <span id="modalCategory" style="font-size: 12px; font-weight: 800; color: var(--rally-gold)"></span>
+                </div>
+                <button onclick="closeModal()" style="background:none; border:none; color:white; font-size:32px; cursor:pointer">&times;</button>
+            </div>
+            <div id="modalInputs" style="padding:1.5rem; display:grid; grid-template-columns:repeat(2, 1fr); gap:15px; max-height:60vh; overflow-y:auto; background: #f1f5f9;"></div>
+            <div style="padding:1.2rem; background:white; display:flex; justify-content:space-between; border-top: 1px solid #ddd;">
+                <button onclick="deleteDriver()" class="btn" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171">ELIMINAR PILOTO</button>
+                <button onclick="closeModal()" class="btn btn-red" style="padding: 10px 40px;">CONFIRMAR Y GUARDAR</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const POINTS_MAP = { 1:20, 2:16, 3:13, 4:10, 5:8, 6:6, 7:4, 8:3, 9:1 };
+    const CALENDAR = [
+        { name: "MONTECARLO", date: "09/ENE" }, { name: "SUECIA", date: "06/FEB" },
+        { name: "MÉXICO", date: "06/MAR" }, { name: "PORTUGAL", date: "24/ABR" },
+        { name: "ITALIA", date: "05/JUN" }, { name: "FINLANDIA", date: "25/SEP" },
+        { name: "ESPAÑA", date: "23/OCT" }, { name: "GALES", date: "20/NOV" }
+    ];
+
+    let drivers = [];
+    let activeId = null;
+    let selectedRaceIdx = null;
+
+    function emptyResults() {
+        return CALENDAR.map(() => ({ car: "", t1p1:0, t2p1:0, t1p2:0, t2p2:0, pos:0 }));
+    }
+
+    window.onload = () => {
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase();
+        const local = localStorage.getItem('ase_rally_scx_v7') || localStorage.getItem('ase_rally_scx_v6_5');
+        
+        if(local) {
+            try {
+                drivers = JSON.parse(local);
+                autoCalculate();
+                render();
+            } catch(e) {
+                console.error("Error al cargar datos locales:", e);
+                drivers = [];
+            }
+        }
+        
+        if(drivers.length === 0) {
+            document.getElementById('live-container').innerHTML = `<div class="ranking-card" style="padding:40px; text-align:center; color:#64748b">
+                <h3>SISTEMA LISTO</h3>
+                <p>Registra pilotos en la barra superior o carga un backup para comenzar.</p>
+            </div>`;
+        }
+    };
+
+    function addDriver() {
+        const nameInput = document.getElementById('newDriverName');
+        const teamInput = document.getElementById('newDriverTeam');
+        const name = nameInput.value.trim().toUpperCase();
+        const team = teamInput.value.trim().toUpperCase() || "ASE SLOT";
+        if (!name) return;
+        const nextId = () => drivers.length > 0 ? Math.max(...drivers.map(d => d.id)) + 1 : 1;
+        drivers.push({ id: nextId(), name, team, category: "WRC", results: emptyResults() });
+        drivers.push({ id: nextId(), name, team, category: "CLASICOS", results: emptyResults() });
+        nameInput.value = "";
+        save(); 
+        render();
+    }
+
+    function save() { 
+        autoCalculate();
+        localStorage.setItem('ase_rally_scx_v7', JSON.stringify(drivers)); 
+    }
+
+    function autoCalculate() {
+        CALENDAR.forEach((_, rIdx) => {
+            ['WRC', 'CLASICOS'].forEach(cat => {
+                const catList = drivers.filter(d => d.category === cat)
+                    .map(d => {
+                        const r = d.results[rIdx];
+                        return { id: d.id, total: (r.t1p1 + r.t2p1 + r.t1p2 + r.t2p2) };
+                    })
+                    .filter(x => x.total > 0)
+                    .sort((a,b) => a.total - b.total);
+                
+                drivers.filter(d => d.category === cat).forEach(d => d.results[rIdx].pos = 0);
+                catList.forEach((item, idx) => {
+                    const drv = drivers.find(d => d.id === item.id);
+                    if(drv) drv.results[rIdx].pos = idx + 1;
+                });
+            });
+        });
+    }
+
+    function isRaceFinished(rIdx) {
+        const completedDrivers = drivers.filter(d => {
+            const r = d.results[rIdx];
+            return r.t1p1 > 0 && r.t2p1 > 0 && r.t1p2 > 0 && r.t2p2 > 0;
+        });
+        return completedDrivers.length > 3;
+    }
+
+    function getCategoryPoints(driver, category) {
+        if (!driver || driver.category !== category) return 0;
+        return driver.results.map(r => r.pos > 0 ? (POINTS_MAP[r.pos] || 0) : 0)
+            .sort((a,b) => b-a).slice(0, 5).reduce((a,b) => a+b, 0);
+    }
+
+    function render() {
+        let activeRaceIdx = selectedRaceIdx;
+        
+        if (activeRaceIdx === null) {
+            activeRaceIdx = 0;
+            for (let i = 0; i < CALENDAR.length; i++) {
+                const hasData = drivers.some(d => (d.results[i].t1p1 + d.results[i].t2p1 + d.results[i].t1p2 + d.results[i].t2p2) > 0);
+                if (hasData) {
+                    activeRaceIdx = i;
+                    if (isRaceFinished(i) && i < CALENDAR.length - 1) {
+                        activeRaceIdx = i + 1;
+                        continue;
+                    }
+                    break;
+                }
+            }
+        }
+
+        document.getElementById('calendarDisplay').innerHTML = CALENDAR.map((c, i) => {
+            const finished = isRaceFinished(i);
+            const hasData = drivers.some(d => (d.results[i].t1p1 + d.results[i].t2p1 + d.results[i].t1p2 + d.results[i].t2p2) > 0);
+            const isActive = i === activeRaceIdx;
+            let statusClass = hasData ? 'cal-done' : '';
+            if (isActive) statusClass = 'cal-active';
+            
+            return `<div class="cal-item ${statusClass}" onclick="setRace(${i})">
+                <b>${c.date}</b><br>${c.name}
+                ${finished ? '<div style="font-size:8px; margin-top:2px">FIN</div>' : ''}
+            </div>`;
+        }).join('');
+
+        renderLiveTable(activeRaceIdx);
+        renderRankings();
+        renderMainTables();
+        renderCarStats();
+    }
+
+    function setRace(idx) {
+        selectedRaceIdx = idx;
+        render();
+    }
+
+    function renderLiveTable(idx) {
+        const race = CALENDAR[idx];
+        
+        const getRowsForCat = (cat) => {
+            return drivers.filter(d => d.category === cat).map(d => {
+                const r = d.results[idx];
+                const sumP1 = r.t1p1 + r.t2p1;
+                const total = sumP1 + r.t1p2 + r.t2p2;
+                return { id: d.id, name: d.name, cat: d.category, car: r.car, t1p2: r.t1p2, t2p2: r.t2p2, sumP1, total };
+            }).filter(x => x.total > 0).sort((a,b) => a.total - b.total);
+        };
+
+        const clasicosResults = getRowsForCat('CLASICOS');
+        const wrcResults = getRowsForCat('WRC');
+
+        if (clasicosResults.length === 0 && wrcResults.length === 0) {
+            document.getElementById('live-container').innerHTML = `<div class="ranking-card" style="padding:30px; text-align:center; opacity:0.6; background:white">
+                NO HAY TIEMPOS REGISTRADOS PARA: <b>${race.name}</b><br>
+                <small>Pulsa sobre un piloto en las tablas de campeonato para introducir tiempos.</small>
+            </div>`;
+            return;
+        }
+
+        let html = `<div class="ranking-card">
+            <div class="card-header-v2" style="background:#020617">
+                <span>🏁 CLASIFICACIÓN EN VIVO: ${race.name}</span>
+                <span style="font-size:10px; color:var(--rally-gold)">ORDEN POR CATEGORÍA</span>
+            </div>`;
+
+        const renderTableSection = (title, data, color) => {
+            if (data.length === 0) return '';
+            let section = `<div style="padding: 10px 20px; background: ${color}; color:white; font-weight:900; font-size:12px; display:flex; justify-content:space-between">
+                <span>CATEGORÍA ${title}</span>
+                <span>${data.length} PILOTOS</span>
+            </div>
+            <table>
+            <thead>
+                <tr>
+                    <th width="50">POS</th>
+                    <th align="left" style="padding-left:20px">PILOTO</th>
+                    <th>COCHE</th>
+                    <th>P1</th>
+                    <th>P2</th>
+                    <th style="background:rgba(0,0,0,0.05)">TOTAL</th>
+                    <th>DIF.</th>
+                </tr>
+            </thead>
+            <tbody>`;
+            
+            data.forEach((res, i) => {
+                const diff = i === 0 ? "LÍDER" : `+${(res.total - data[0].total).toFixed(3)}s`;
+                section += `<tr onclick="openEdit(${res.id})" style="cursor:pointer" class="row-alt">
+                    <td><b>${i+1}º</b></td>
+                    <td align="left" style="padding-left:20px"><b>${res.name}</b></td>
+                    <td><span class="car-badge" style="background:#475569">${res.car || '--'}</span></td>
+                    <td>${res.sumP1.toFixed(3)}</td>
+                    <td>${(res.t1p2 + res.t2p2).toFixed(3)}</td>
+                    <td style="font-weight:900; background:#fefce8">${res.total.toFixed(3)}</td>
+                    <td class="diff-tag ${i>0?'gap':''}">${diff}</td>
+                </tr>`;
+            });
+            section += `</tbody></table>`;
+            return section;
+        };
+
+        html += renderTableSection('CLASICOS', clasicosResults, '#991b1b');
+        html += renderTableSection('WRC', wrcResults, '#1e293b');
+        html += `</div>`;
+        
+        document.getElementById('live-container').innerHTML = html;
+    }
+
+    function renderRankings() {
+        const uniqueNames = [...new Set(drivers.map(d => d.name))];
+        const abs = uniqueNames.map(name => {
+            const ent = drivers.filter(d => d.name === name);
+            const wrc = ent.find(e => e.category === 'WRC');
+            const cls = ent.find(e => e.category === 'CLASICOS');
+            const total = getCategoryPoints(wrc, 'WRC') + getCategoryPoints(cls, 'CLASICOS');
+            return { name, total };
+        }).filter(d => d.total > 0).sort((a,b) => b.total - a.total).slice(0, 5);
+
+        document.getElementById('rank-scratch').innerHTML = `<div class="card-header-v2 gold">🏆 TOP 5 ABSOLUTO</div><table>${abs.length > 0 ? abs.map((d,i)=>`<tr><td width="35">${i+1}º</td><td class="col-driver">${d.name}</td><td class="pts-total">${d.total}</td></tr>`).join('') : '<tr><td colspan="3" style="padding:15px">Esperando resultados...</td></tr>'}</table>`;
+
+        ['WRC', 'CLASICOS'].forEach(cat => {
+            const list = drivers.filter(d => d.category === cat).sort((a,b) => getCategoryPoints(b, cat) - getCategoryPoints(a, cat)).slice(0, 5);
+            document.getElementById(`rank-${cat.toLowerCase()}`).innerHTML = `<div class="card-header-v2 ${cat==='WRC'?'red':''}">🌟 TOP 5 ${cat}</div><table>${list.length > 0 ? list.map((d,i)=>`<tr><td width="35">${i+1}º</td><td class="col-driver">${d.name}</td><td class="pts-total">${getCategoryPoints(d, cat)}</td></tr>`).join('') : '<tr><td colspan="3" style="padding:15px">Sin datos</td></tr>'}</table>`;
+        });
+    }
+
+    function renderMainTables() {
+        let html = '';
+        ['CLASICOS', 'WRC'].forEach(cat => {
+            const list = drivers.filter(d => d.category === cat).sort((a,b) => getCategoryPoints(b, cat) - getCategoryPoints(a, cat));
+            html += `<div class="ranking-card">
+                <div class="card-header-v2" style="${cat==='CLASICOS'?'background:var(--rally-red-comp)':''}">CAMPEONATO ${cat} (Puntos Totales)</div>
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="col-driver">PILOTO</th>
+                                ${CALENDAR.map(c => `<th>${c.name.substring(0,3)}</th>`).join('')}
+                                <th class="pts-total">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            
+            list.forEach(d => {
+                html += `<tr onclick="openEdit(${d.id})" class="row-alt" style="cursor:pointer">
+                    <td class="col-driver"><b>${d.name}</b><br><small>${d.team}</small></td>`;
+                d.results.forEach(r => {
+                    const pts = r.pos > 0 ? (POINTS_MAP[r.pos] || 0) : '-';
+                    const carInfo = r.car ? `<span class="car-label">${r.car}</span>` : '';
+                    const detail = r.pos > 0 ? `<div style="font-size:7px; color:var(--rally-red-comp)">${r.pos}º</div>` : '';
+                    html += `<td><b>${pts}</b>${detail}${carInfo}</td>`;
+                });
+                html += `<td class="pts-total">${getCategoryPoints(d, cat)}</td></tr>`;
+            });
+            html += `</tbody></table></div></div>`;
+        });
+        document.getElementById('dashboard').innerHTML = html;
+    }
+
+    function renderCarStats() {
+        let totalParticipations = 0;
+        ['WRC', 'CLASICOS'].forEach(cat => {
+            const carMap = {};
+            drivers.filter(d => d.category === cat).forEach(d => {
+                d.results.forEach(r => {
+                    if (r.car && r.pos > 0) {
+                        totalParticipations++;
+                        const carName = r.car.trim().toUpperCase();
+                        if (!carMap[carName]) carMap[carName] = { points: 0, entries: 0, wins: 0 };
+                        carMap[carName].points += (POINTS_MAP[r.pos] || 0);
+                        carMap[carName].entries += 1;
+                        if (r.pos === 1) carMap[carName].wins += 1;
+                    }
+                });
+            });
+
+            const sortedCars = Object.entries(carMap)
+                .map(([name, s]) => ({ 
+                    name, 
+                    ...s, 
+                    ratio: (s.points / s.entries).toFixed(2) 
+                }))
+                .sort((a, b) => b.ratio - a.ratio);
+
+            if (sortedCars.length > 0) {
+                const best = [...sortedCars].sort((a,b) => b.points - a.points)[0];
+                document.getElementById(`best-${cat==='WRC'?'wrc':'classic'}-car`).innerHTML = `
+                    <div style="font-size:10px; color:#666">VEHÍCULO CON MÁS PUNTOS ${cat}</div>
+                    <div style="font-size:14px; font-weight:900">${best.name}</div>
+                    <div style="font-size:10px; color:var(--rally-red-comp)">${best.wins} VICT. / ${best.points} PTS</div>
+                `;
+            }
+
+            let html = `<div class="card-header-v2">📊 RATIO RENDIMIENTO ${cat} (PTS/PART)</div>
+                <table><thead><tr><th align="left" style="padding-left:15px">COCHE</th><th>PART</th><th>PTS</th><th>RATIO</th></tr></thead><tbody>`;
+            sortedCars.forEach(c => {
+                html += `<tr><td align="left" style="padding-left:15px"><b>${c.name}</b></td><td>${c.entries}</td><td>${c.points}</td><td style="background:#f1f5f9; font-weight:900">${c.ratio}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+            document.getElementById(`stats-cars-${cat.toLowerCase()}`).innerHTML = html;
+        });
+        document.getElementById('totalEntriesCount').innerText = `${totalParticipations} ENTRADAS`;
+    }
+
+    function openEdit(id) {
+        activeId = id; 
+        const d = drivers.find(x => x.id === id);
+        if(!d) return;
+        document.getElementById('modalTitle').innerText = d.name;
+        document.getElementById('modalCategory').innerText = `${d.category} - ${d.team}`;
+        document.getElementById('modalInputs').innerHTML = d.results.map((r, i) => `
+            <div style="padding:15px; background:white; border-radius:10px; border: 1px solid #cbd5e1">
+                <div style="font-weight:900; margin-bottom:10px; color:var(--rally-red-comp)">🚩 ${CALENDAR[i].name}</div>
+                <input type="text" placeholder="COCHE SCX" value="${r.car||''}" oninput="upd(${i},'car',this.value)" style="width:100%; margin-bottom:10px; padding:8px; border:1px solid #ddd; border-radius:4px">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+                    <input type="number" step="0.001" placeholder="T1 P1" value="${r.t1p1 || ''}" oninput="upd(${i},'t1p1',this.value)" style="padding:6px">
+                    <input type="number" step="0.001" placeholder="T2 P1" value="${r.t2p1 || ''}" oninput="upd(${i},'t2p1',this.value)" style="padding:6px">
+                    <input type="number" step="0.001" placeholder="T1 P2" value="${r.t1p2 || ''}" oninput="upd(${i},'t1p2',this.value)" style="padding:6px">
+                    <input type="number" step="0.001" placeholder="T2 P2" value="${r.t2p2 || ''}" oninput="upd(${i},'t2p2',this.value)" style="padding:6px">
+                </div>
+            </div>`).join('');
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function upd(i, k, v) { 
+        const d = drivers.find(x => x.id === activeId);
+        if(d) { 
+            if (k === 'car') d.results[i][k] = v.toUpperCase();
+            else d.results[i][k] = parseFloat(v) || 0;
+            save(); 
+            render(); 
+        }
+    }
+
+    function deleteDriver() {
+        const d = drivers.find(x => x.id === activeId);
+        if(confirm(`¿ELIMINAR A ${d.name}?`)) { 
+            drivers = drivers.filter(x => x.name !== d.name); 
+            save(); 
+            closeModal(); 
+        }
+    }
+
+    function closeModal() { 
+        document.getElementById('editModal').style.display = 'none'; 
+        render(); 
+    }
+
+    function generatePDF() {
+        const element = document.getElementById('printable-report');
+        const opt = { 
+            margin: [5, 2, 5, 2], 
+            filename: `RallySprint_ASE_2026.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 1.5, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+
+    function exportJSON() {
+        // Aseguramos codificación UTF-8 explícita para el backup
+        const jsonString = JSON.stringify(drivers);
+        const blob = new Blob([jsonString], { type: "application/json;charset=utf-8" });
+        const a = document.createElement('a'); 
+        a.href = URL.createObjectURL(blob); 
+        a.download = `rally_backup_2026.json`; 
+        a.click();
+    }
+
+    function importJSON(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        // Forzamos la lectura en UTF-8
+        reader.readAsText(file, "UTF-8");
+        reader.onload = (ev) => { 
+            try { 
+                const data = JSON.parse(ev.target.result); 
+                if(Array.isArray(data)) { 
+                    drivers = data; 
+                    save(); 
+                    render(); 
+                    // Reset input
+                    e.target.value = '';
+                }
+            } catch(err) { 
+                console.error("Error al importar JSON:", err);
+                alert("Archivo inválido o con errores de formato."); 
+            } 
+        };
+    }
+</script>
+</body>
+</html>
